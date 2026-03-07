@@ -1,10 +1,11 @@
-# FlatCityBuf C++ bindings distribute pre-built static libraries (Rust-compiled core)
-# with CXX bridge headers and source, so we fetch the appropriate platform archive
-# from GitHub Releases rather than building from source.
+# FlatCityBuf C++ bindings distribute a Rust-compiled static library that cannot be
+# built from source via vcpkg. Building from source requires a Rust toolchain and
+# cargo; upstream issue tracking a proper from-source build:
+# https://github.com/cityjson/flatcitybuf
+set(VCPKG_BUILD_TYPE release)
 
 set(FCB_VERSION "0.7.4")
 
-# Determine the correct archive asset based on target platform and architecture
 if(VCPKG_TARGET_IS_WINDOWS)
     if(NOT VCPKG_TARGET_ARCHITECTURE STREQUAL "x64")
         message(FATAL_ERROR "${PORT} only supports x64 on Windows.")
@@ -40,54 +41,35 @@ vcpkg_download_distfile(ARCHIVE
 vcpkg_extract_source_archive(
     SOURCE_PATH
     ARCHIVE "${ARCHIVE}"
-    NO_REMOVE_ONE_LEVEL  # Archive contains files directly, not in a subdirectory
+    NO_REMOVE_ONE_LEVEL
 )
 
-# ── Install headers ────────────────────────────────────────────────────────────
 file(INSTALL
     "${SOURCE_PATH}/fcb.h"
     "${SOURCE_PATH}/lib.rs.h"
     DESTINATION "${CURRENT_PACKAGES_DIR}/include/flatcitybuf"
 )
 
-# ── Install the CXX bridge source (must be compiled with consumer code) ────────
-# Installed to share/ so consumers can locate it via the CMake config target.
 file(INSTALL
     "${SOURCE_PATH}/lib.rs.cc"
     DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}"
 )
 
-# ── Install static library ─────────────────────────────────────────────────────
 if(VCPKG_TARGET_IS_WINDOWS)
-    file(INSTALL
-        "${SOURCE_PATH}/fcb_cpp.lib"
-        DESTINATION "${CURRENT_PACKAGES_DIR}/lib"
-    )
-    # vcpkg expects both release and debug; reuse the same pre-built static lib
-    file(INSTALL
-        "${SOURCE_PATH}/fcb_cpp.lib"
-        DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib"
-    )
+    file(INSTALL "${SOURCE_PATH}/fcb_cpp.lib"
+        DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
 else()
-    file(INSTALL
-        "${SOURCE_PATH}/libfcb_cpp.a"
-        DESTINATION "${CURRENT_PACKAGES_DIR}/lib"
-    )
-    file(INSTALL
-        "${SOURCE_PATH}/libfcb_cpp.a"
-        DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib"
-    )
+    file(INSTALL "${SOURCE_PATH}/libfcb_cpp.a"
+        DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
 endif()
 
-# ── CMake integration files ────────────────────────────────────────────────────
 configure_file(
-    "${CMAKE_CURRENT_LIST_DIR}/flatcitybuf-config.cmake.in"
-    "${CURRENT_PACKAGES_DIR}/share/${PORT}/flatcitybuf-config.cmake"
+    "${CMAKE_CURRENT_LIST_DIR}/unofficial-flatcitybuf-config.cmake.in"
+    "${CURRENT_PACKAGES_DIR}/share/unofficial-${PORT}/unofficial-flatcitybuf-config.cmake"
     @ONLY
 )
 
 file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage"
     DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
 
-# ── Copyright / license ─────────────────────────────────────────────────────
 vcpkg_install_copyright(FILE_LIST "${CMAKE_CURRENT_LIST_DIR}/copyright")

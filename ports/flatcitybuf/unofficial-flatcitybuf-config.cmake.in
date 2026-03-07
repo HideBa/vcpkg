@@ -1,0 +1,38 @@
+# FlatCityBuf C++ Bindings - vcpkg CMake integration
+# Provides the unofficial::flatcitybuf::flatcitybuf imported target.
+# The CXX bridge source (lib.rs.cc) MUST be compiled with your consuming target.
+
+include(CMakeFindDependencyMacro)
+
+if(UNIX AND NOT APPLE)
+    find_dependency(OpenSSL REQUIRED)
+endif()
+
+if(NOT TARGET unofficial::flatcitybuf::flatcitybuf)
+    add_library(unofficial::flatcitybuf::flatcitybuf STATIC IMPORTED)
+
+    get_filename_component(_FCB_SHARE "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
+    get_filename_component(_FCB_ROOT  "${_FCB_SHARE}" DIRECTORY)
+
+    set(FLATCITYBUF_CXX_BRIDGE_SOURCE "${_FCB_ROOT}/share/flatcitybuf/lib.rs.cc"
+        CACHE FILEPATH "Path to the FlatCityBuf CXX bridge source (lib.rs.cc). Compile alongside your target.")
+
+    set_target_properties(unofficial::flatcitybuf::flatcitybuf PROPERTIES
+        IMPORTED_LOCATION "${_FCB_ROOT}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}fcb_cpp${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_FCB_ROOT}/include/flatcitybuf"
+    )
+
+    if(APPLE)
+        set_target_properties(unofficial::flatcitybuf::flatcitybuf PROPERTIES
+            INTERFACE_LINK_LIBRARIES "-framework Security;-framework CoreFoundation;-framework SystemConfiguration"
+        )
+    elseif(WIN32)
+        set_target_properties(unofficial::flatcitybuf::flatcitybuf PROPERTIES
+            INTERFACE_LINK_LIBRARIES "ws2_32;userenv;bcrypt;ntdll"
+        )
+    else()
+        set_target_properties(unofficial::flatcitybuf::flatcitybuf PROPERTIES
+            INTERFACE_LINK_LIBRARIES "OpenSSL::SSL;OpenSSL::Crypto;pthread;dl;m"
+        )
+    endif()
+endif()
